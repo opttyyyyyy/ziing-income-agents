@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ziing — Income & Agent Studio</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">Z</span>
+        <div>
+          <strong>Ziing</strong>
+          <small>Income & Agent Studio</small>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span>Overview</button>
+        <button class="nav-item" data-view="income"><span class="nav-icon">$</span>Income</button>
+        <button class="nav-item" data-view="agents"><span class="nav-icon">✦</span>Agents</button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+      </nav>
+      <div class="sidebar-note">
+        <div class="note-dot"></div>
+        Local & private<br>
+        <span>All data stays on this computer.</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="view-title">Overview</h1>
+          <p id="view-subtitle">Your income and coloring-book agents at a glance.</p>
+        </div>
+        <div class="sync"><span class="sync-dot"></span><span id="sync-label">Connected</span></div>
+      </header>
+      <div id="toast" class="toast hidden"></div>
+      <section id="view-overview" class="view"></section>
+      <section id="view-income" class="view hidden"></section>
+      <section id="view-agents" class="view hidden"></section>
+      <section id="view-settings" class="view hidden"></section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
