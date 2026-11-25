@@ -4,5 +4,10 @@ module.exports = {
     params: {
       path: "app/node_modules"
     }
+  }, {
+    method: "fs.rm",
+    params: {
+      path: "env"
+    }
   }]
 }

@@ -5,9 +5,9 @@
 Ziing is a local web app with two jobs:
 
 1. **One income dashboard.** Track every income stream (Amazon KDP, Etsy, PayPal, Patreon, YouTube, or your own sources) in one place, with monthly charts and per-source breakdowns.
-2. **Coloring-book agents.** Create an agent, give it a theme, and let it draw a coloring book page by page using an image API. Review each page, approve the ones you like, and export a print-ready PDF for Amazon KDP.
+2. **Coloring-book agents.** Create an agent, give it a theme, and let it draw a coloring book page by page using either a cloud image API or a local model on your NVIDIA GPU. Review each page, approve the ones you like, and export a print-ready PDF for Amazon KDP.
 
-Everything runs on your own computer. Your income entries, API key, and generated pages stay in `app/data/` and are never uploaded anywhere except to the image API you configure.
+Everything runs on your own computer. Your income entries, API key, and generated pages stay in `app/data/`; downloaded models stay in `app/models/`. Nothing is uploaded anywhere except to the cloud image API if you choose one.
 
 ## Install and run
 
@@ -15,20 +15,24 @@ Install [Pinokio](https://pinokio.co), then click **Install**. When it finishes,
 
 The launcher provides:
 
-- **Install** — installs Node dependencies into `app/node_modules`
+- **Install** — installs Node dependencies into `app/node_modules`; on NVIDIA machines it also installs PyTorch, `diffusers`, and downloads SD Turbo into `app/models/`
 - **Start** — launches the server on a free port and shows its URL
 - **Update** — refreshes dependencies
-- **Reset** — removes installed dependencies so you can reinstall from scratch
+- **Reset** — removes installed Node/Python dependencies so you can reinstall from scratch
 
-Your data is preserved across Update and Reset.
+Your income entries, generated pages, and downloaded models are preserved across Update and Reset.
 
 ## First-time setup
 
-1. Open **Settings**.
-2. Paste an API key from an OpenAI-compatible image API. The defaults are `https://api.openai.com/v1` and model `gpt-image-1`. If you use another provider, change the base URL and model to match.
-3. Click **Save settings**.
+Open **Settings** and pick a provider:
 
-You need a paid image API key to generate pages. Browsing the dashboard and entering income works without one.
+**Local GPU (no API key)** — available when Pinokio detects an NVIDIA GPU. Select **Local GPU**, choose `SD Turbo` (already downloaded during Install) or `SDXL Turbo` (downloads on first use, about 7 GB), set steps (2 is a good default), and save. The first page takes a minute while the model loads into GPU memory; later pages are fast. No key, no usage fees.
+
+**Cloud API** — select **Cloud API**, paste a key from an OpenAI-compatible image service, and optionally change the base URL and model (defaults: `https://api.openai.com/v1` and `gpt-image-1`). This works on any computer, including machines without a GPU.
+
+Browsing the dashboard and entering income works without either option.
+
+Local generation requires an NVIDIA GPU with roughly 6 GB of VRAM for SD Turbo (8 GB+ recommended) and the **Install** step completed on that machine. The local model is downloaded into `app/models/` and never leaves your computer.
 
 ## Using the app
 
@@ -64,7 +68,7 @@ Base URL: `http://127.0.0.1:<PORT>` — the port is shown in Pinokio's **Open We
 | Method | Endpoint | Body | Purpose |
 | --- | --- | --- | --- |
 | GET | `/api/state` | — | Read all data |
-| POST | `/api/settings` | `{ baseUrl, apiKey, model, size }` | Update API configuration |
+| POST | `/api/settings` | `{ provider, baseUrl, apiKey, model, size, localModel, localSteps }` | Update generation settings (`provider`: `cloud` or `local`) |
 | POST | `/api/sources` | `{ name, color }` | Add a source |
 | DELETE | `/api/sources/:id` | — | Remove a source and its entries |
 | POST | `/api/income` | `{ sourceId, amount, date, note }` | Add an income entry |
@@ -146,9 +150,16 @@ curl -O -J http://127.0.0.1:3000/api/export/AGENT_ID
 
 ## Notes
 
-- Requires Node.js 18 or newer (provided by Pinokio).
+- Requires Node.js 18 or newer (provided by Pinokio). Local mode additionally needs an NVIDIA GPU and the AI bundle installed by Pinokio.
 - The image API key is stored in `app/data/store.json` on your machine. Do not commit that file.
-- If generating pages fails, the agent card shows the exact API error so you can fix the key, model, or base URL and press Start again.
+- Downloaded models live in `app/models/` and are not committed.
+- To switch to local generation from an API:
+
+  ```javascript
+  await api('/api/settings', 'POST', { provider: 'local', localModel: 'sd-turbo', localSteps: 2 })
+  ```
+
+- If generating pages fails, the agent card shows the exact error so you can fix the key, model, or base URL and press Start again.
 
 ## Add to the Pinokio directory
 

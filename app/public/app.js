@@ -344,27 +344,44 @@ function renderAgents() {
 function renderSettings() {
   const el = document.getElementById('view-settings')
   const settings = state.settings || {}
+  const gpu = (state.capabilities && state.capabilities.gpu) || 'unknown'
+  const canLocal = gpu === 'nvidia'
+  const provider = settings.provider || 'cloud'
   const captured = captureForm('settings-form')
   el.innerHTML = `
     <div class="panel">
-      <h2>Image generation API</h2>
-      <p class="hint">The app uses an OpenAI-compatible image endpoint to draw your coloring pages.</p>
+      <h2>Image generation</h2>
+      <p class="hint">Use a cloud API or generate pages on your own NVIDIA GPU. Local mode needs a one-time model install via the Install button.</p>
       <form id="settings-form">
-        <div class="field grow"><label for="settings-base">API base URL</label><input id="settings-base" name="baseUrl" value="${esc(settings.baseUrl || '')}" placeholder="https://api.openai.com/v1"></div>
-        <div class="field"><label for="settings-model">Model</label><input id="settings-model" name="model" value="${esc(settings.model || '')}" placeholder="gpt-image-1"></div>
-        <div class="field"><label for="settings-size">Image size</label><select id="settings-size" name="size">
-          ${['1024x1024', '1536x1024', '1024x1536', '512x512'].map((size) => `<option value="${size}"${settings.size === size ? ' selected' : ''}>${size}</option>`).join('')}
+        <div class="field grow"><label for="settings-provider">Provider</label><select id="settings-provider" name="provider">
+          <option value="cloud"${provider === 'cloud' ? ' selected' : ''}>Cloud API (OpenAI-compatible)</option>
+          <option value="local"${provider === 'local' ? ' selected' : ''}${canLocal ? '' : ' disabled'}>Local GPU${canLocal ? '' : ' (NVIDIA required)'}</option>
         </select></div>
-        <div class="field grow"><label for="settings-key">API key</label><input id="settings-key" name="apiKey" type="password" value="${esc(settings.apiKey || '')}" placeholder="sk-..."></div>
+        <div id="cloud-fields" class="${provider === 'local' ? 'hidden' : ''}" style="display:contents">
+          <div class="field grow"><label for="settings-base">API base URL</label><input id="settings-base" name="baseUrl" value="${esc(settings.baseUrl || '')}" placeholder="https://api.openai.com/v1"></div>
+          <div class="field"><label for="settings-model">Model</label><input id="settings-model" name="model" value="${esc(settings.model || '')}" placeholder="gpt-image-1"></div>
+          <div class="field"><label for="settings-size">Image size</label><select id="settings-size" name="size">
+            ${['1024x1024', '1536x1024', '1024x1536', '512x512'].map((size) => `<option value="${size}"${settings.size === size ? ' selected' : ''}>${size}</option>`).join('')}
+          </select></div>
+          <div class="field grow"><label for="settings-key">API key</label><input id="settings-key" name="apiKey" type="password" value="${esc(settings.apiKey || '')}" placeholder="sk-..."></div>
+        </div>
+        <div id="local-fields" class="${provider === 'local' ? '' : 'hidden'}" style="display:contents">
+          <div class="field grow"><label for="settings-local-model">Local model</label><select id="settings-local-model" name="localModel">
+            <option value="sd-turbo"${(settings.localModel || 'sd-turbo') === 'sd-turbo' ? ' selected' : ''}>SD Turbo (installed by default)</option>
+            <option value="sdxl-turbo"${settings.localModel === 'sdxl-turbo' ? ' selected' : ''}>SDXL Turbo (downloads on first use)</option>
+          </select></div>
+          <div class="field"><label for="settings-steps">Steps</label><input id="settings-steps" name="localSteps" type="number" min="1" max="8" value="${settings.localSteps || 2}"></div>
+        </div>
         <button class="btn primary" type="submit">Save settings</button>
       </form>
+      ${canLocal ? '' : '<p class="hint" style="margin-top:12px">Local generation is disabled because this computer has no NVIDIA GPU detected by Pinokio.</p>'}
     </div>
     <div class="panel">
       <h2>How it works</h2>
       <div class="note-box">
         <p><strong>1. Add income.</strong> Enter payments by hand or paste CSV rows from any platform. Everything is stored locally in <code>app/data/store.json</code>.</p>
         <p><strong>2. Create an agent.</strong> Give it a theme such as "ocean animals" and choose how many pages it should make.</p>
-        <p><strong>3. Start it.</strong> The agent draws pages one at a time through your image API. Use Stop to pause it.</p>
+        <p><strong>3. Start it.</strong> With Local selected, the first page loads the model into GPU memory (this takes a minute); later pages are fast. Use Stop to pause.</p>
         <p><strong>4. Review and export.</strong> Approve the pages you like, then download a print-ready coloring book PDF for Amazon KDP.</p>
       </div>
     </div>`
@@ -423,6 +440,11 @@ document.addEventListener('change', (event) => {
     pageFilter = event.target.value
     renderAgents()
   }
+  if (event.target.id === 'settings-provider') {
+    const local = event.target.value === 'local'
+    document.getElementById('cloud-fields').classList.toggle('hidden', local)
+    document.getElementById('local-fields').classList.toggle('hidden', !local)
+  }
 })
 
 document.addEventListener('submit', async (event) => {
@@ -447,7 +469,7 @@ document.addEventListener('submit', async (event) => {
       form.reset()
       document.getElementById('agent-pages').value = 12
     } else if (form.id === 'settings-form') {
-      await commit('/api/settings', { baseUrl: value('baseUrl'), apiKey: value('apiKey'), model: value('model'), size: value('size') }, 'Settings saved')
+      await commit('/api/settings', { provider: value('provider'), baseUrl: value('baseUrl'), apiKey: value('apiKey'), model: value('model'), size: value('size'), localModel: value('localModel'), localSteps: value('localSteps') }, 'Settings saved')
     }
   } catch (error) {
     notify(error.message, 'error')

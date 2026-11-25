@@ -1,6 +1,8 @@
 const express = require('express')
 const fs = require('fs')
 const path = require('path')
+const net = require('net')
+const { spawn } = require('child_process')
 const PDFDocument = require('pdfkit')
 
 const app = express()
@@ -29,10 +31,13 @@ function defaultStore() {
     agents: [],
     pages: [],
     settings: {
+      provider: 'cloud',
       baseUrl: 'https://api.openai.com/v1',
       apiKey: '',
       model: 'gpt-image-1',
-      size: '1024x1024'
+      size: '1024x1024',
+      localModel: 'sd-turbo',
+      localSteps: 2
     }
   }
 }
@@ -62,11 +67,67 @@ function saveStore(store) {
 function publicStore(store) {
   return {
     ...store,
+    capabilities: { gpu: process.env.GPU || 'unknown' },
     settings: {
       ...store.settings,
       apiKey: store.settings.apiKey ? '********' : ''
     }
   }
+}
+
+let workerProcess = null
+let workerPort = null
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port
+      server.close(() => resolve(port))
+    })
+  })
+}
+
+async function ensureWorker() {
+  if (workerProcess && workerProcess.exitCode === null) return workerPort
+  const python = path.join(__dirname, '..', 'env', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python')
+  if (!fs.existsSync(python)) {
+    throw new Error('Local generator is not installed. Run Install again on this computer.')
+  }
+  workerPort = await freePort()
+  workerProcess = spawn(python, [path.join(__dirname, 'generate.py')], {
+    env: { ...process.env, PORT: String(workerPort) },
+    stdio: ['ignore', 'ignore', 'pipe']
+  })
+  workerProcess.stderr.on('data', (chunk) => process.stderr.write(`[local generator] ${chunk}`))
+  workerProcess.on('exit', () => { workerProcess = null })
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${workerPort}/health`)
+      if (response.ok) return workerPort
+    } catch (error) {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+  throw new Error('Local generator did not start. Check the Pinokio terminal for details.')
+}
+
+async function fetchLocal(settings, prompt) {
+  const port = await ensureWorker()
+  const response = await fetch(`http://127.0.0.1:${port}/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: settings.localModel || 'sd-turbo',
+      steps: settings.localSteps || 2,
+      prompt
+    })
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || `Local generator returned ${response.status}`)
+  if (!data.image) throw new Error('Local generator returned no image')
+  return Buffer.from(data.image, 'base64')
 }
 
 function splitCSV(line) {
@@ -103,6 +164,7 @@ function buildPrompt(theme, style, index) {
 }
 
 async function fetchImage(settings, prompt) {
+  if (settings.provider === 'local') return fetchLocal(settings, prompt)
   const endpoint = String(settings.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '') + '/images/generations'
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -192,7 +254,7 @@ app.get('/api/state', (req, res) => {
 app.post('/api/settings', (req, res) => {
   const store = loadStore()
   const incoming = req.body || {}
-  for (const key of ['baseUrl', 'apiKey', 'model', 'size']) {
+  for (const key of ['provider', 'baseUrl', 'apiKey', 'model', 'size', 'localModel', 'localSteps']) {
     if (incoming[key] === undefined) continue
     if (key === 'apiKey' && incoming[key] === '********') continue
     store.settings[key] = String(incoming[key])
@@ -306,7 +368,9 @@ app.post('/api/agents/:id/start', (req, res) => {
   const store = loadStore()
   const agent = store.agents.find((item) => item.id === req.params.id)
   if (!agent) return res.status(404).json({ error: 'Agent not found' })
-  if (!store.settings.apiKey) return res.status(400).json({ error: 'Add your API key in Settings first' })
+  if (store.settings.provider !== 'local' && !store.settings.apiKey) {
+    return res.status(400).json({ error: 'Add your API key in Settings first, or switch to Local generation' })
+  }
   agent.status = 'running'
   agent.error = ''
   saveStore(store)
@@ -382,6 +446,10 @@ app.get('/api/export/:agentId', (req, res) => {
 
 app.use((error, req, res, next) => {
   res.status(400).json({ error: error.message || 'Bad request' })
+})
+
+process.on('exit', () => {
+  if (workerProcess && workerProcess.exitCode === null) workerProcess.kill()
 })
 
 app.listen(PORT, '127.0.0.1', () => {

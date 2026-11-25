@@ -5,7 +5,8 @@ module.exports = {
       method: "shell.run",
       params: {
         env: {
-          PORT: "{{port}}"
+          PORT: "{{port}}",
+          GPU: "{{gpu}}"
         },
         path: "app",
         message: [

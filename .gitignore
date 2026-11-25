@@ -12,3 +12,7 @@ venv
 /QWEN.md
 /SPEC.md
 /app/data/
+/app/models/
+/env/
+__pycache__/
+*.pyc
