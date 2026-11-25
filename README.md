@@ -32,7 +32,7 @@ Open **Settings** and pick a provider:
 
 Browsing the dashboard and entering income works without either option.
 
-Local generation requires an NVIDIA GPU with roughly 6 GB of VRAM for SD Turbo (8 GB+ recommended) and the **Install** step completed on that machine. The local model is downloaded into `app/models/` and never leaves your computer.
+Local generation requires an NVIDIA GPU with roughly 6 GB of VRAM for SD Turbo (8 GB+ recommended) and the **Install** step completed on that machine. Install downloads the full SD Turbo repository (about 13 GB) into `app/models/`; it stays on your computer and is reused on later installs.
 
 ## Using the app
 

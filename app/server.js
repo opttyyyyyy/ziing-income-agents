@@ -91,7 +91,7 @@ function freePort() {
 
 async function ensureWorker() {
   if (workerProcess && workerProcess.exitCode === null) return workerPort
-  const python = path.join(__dirname, '..', 'env', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python')
+  const python = path.join(__dirname, 'env', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python')
   if (!fs.existsSync(python)) {
     throw new Error('Local generator is not installed. Run Install again on this computer.')
   }

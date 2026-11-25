@@ -65,6 +65,7 @@ module.exports = {
       }
     },
     {
+      "when": "{{gpu === 'none'}}",
       "method": "shell.run",
       "params": {
         "venv": "{{args && args.venv ? args.venv : null}}",
