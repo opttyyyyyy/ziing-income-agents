@@ -1,6 +1,6 @@
 # Ziing — Income Dashboard & Coloring-Book Agent Studio
 
-[![Install with Pinokio](https://badges.pinokio.co/install.svg)](https://pinokio.co/resolve?url=https://github.com/OWNER/REPO)
+[![Install with Pinokio](https://badges.pinokio.co/install.svg)](https://pinokio.co/resolve?url=https://github.com/opttyyyyyy/ziing-income-agents)
 
 Ziing is a local web app with two jobs:
 
@@ -150,4 +150,6 @@ curl -O -J http://127.0.0.1:3000/api/export/AGENT_ID
 - The image API key is stored in `app/data/store.json` on your machine. Do not commit that file.
 - If generating pages fails, the agent card shows the exact API error so you can fix the key, model, or base URL and press Start again.
 
-When publishing this project, replace `OWNER/REPO` in the badge above with the real GitHub repository.
+## Add to the Pinokio directory
+
+Open the install link in the badge above (or https://pinokio.co/resolve?url=https://github.com/opttyyyyyy/ziing-income-agents), sign in if prompted, and choose to add the project to the Pinokio directory when asked.
